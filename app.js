@@ -53,6 +53,7 @@ function spokenMinutes(min) {
 function showView(name) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${name}`));
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === name));
+  window.scrollTo(0, 0);
   if (name === 'overview') renderOverview();
   if (name === 'settings') renderSettings();
 }

@@ -95,7 +95,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 
 button, .file-btn {
   font: inherit; cursor: pointer; border-radius: 10px; padding: 10px 16px;
-  border: 1px solid transparent; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid transparent; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;
 }
 .primary { background: var(--accent); color: #fff; font-weight: 600; }
 @media (prefers-color-scheme: dark) { .primary { color: #04201d; } }
