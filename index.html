@@ -28,7 +28,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
         </button>
         <p id="micHint" class="hint">Tryck och säg t.ex. <em>”Igår 7 till 16 på Villa Ek, lunch 30 minuter, monterade kök”</em></p>
-        <p id="srUnsupported" class="warn" hidden>Din webbläsare saknar inbyggd taligenkänning. Skriv texten nedan, eller använd tangentbordets dikteringsknapp 🎤.</p>
+        <p id="srUnsupported" class="warn" hidden>Mikrofonknappen fungerar inte här. Tryck i rutan nedan och använd tangentbordets mikrofon 🎤 för att tala in, tryck sedan ”Tolka text”.</p>
       </div>
 
       <label class="field">
@@ -138,6 +138,12 @@
 
   <datalist id="projectList"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="askDialog" class="ask" hidden>
+    <div class="ask-box" role="alertdialog" aria-labelledby="askText">
+      <p id="askText"></p>
+      <div class="row gap"><button id="askOk" class="primary">OK</button><button id="askCancel" class="ghost">Avbryt</button></div>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>

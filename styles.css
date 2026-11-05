@@ -8,11 +8,12 @@
   --accent-soft: #d6f0ec;
   --danger: #b42318;
   --rec: #dc2626;
+  --on-accent: #ffffff;
   --radius: 14px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #101315;
     --surface: #1a1f22;
     --text: #e8ecef;
@@ -21,9 +22,22 @@
     --accent: #2dd4bf;
     --accent-soft: #133b37;
     --danger: #f97066;
+    --on-accent: #04201d;
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+    --bg: #101315;
+    --surface: #1a1f22;
+    --text: #e8ecef;
+    --muted: #97a3ad;
+    --border: #2c3337;
+    --accent: #2dd4bf;
+    --accent-soft: #133b37;
+    --danger: #f97066;
+    --on-accent: #04201d;
+    color-scheme: dark;
+  }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -34,7 +48,7 @@ body {
   color: var(--text);
   padding-bottom: calc(72px + env(safe-area-inset-bottom));
 }
-main { max-width: 720px; margin: 0 auto; padding: 16px; }
+main { max-width: 720px; margin: 0 auto; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 h1 { font-size: 1.15rem; margin: 0; }
 h2 { font-size: 1rem; margin: 0 0 8px; }
 
@@ -97,8 +111,7 @@ button, .file-btn {
   font: inherit; cursor: pointer; border-radius: 10px; padding: 10px 16px;
   border: 1px solid transparent; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;
 }
-.primary { background: var(--accent); color: #fff; font-weight: 600; }
-@media (prefers-color-scheme: dark) { .primary { color: #04201d; } }
+.primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .secondary { background: var(--accent-soft); color: var(--text); border-color: var(--border); }
 .ghost { background: transparent; color: var(--text); border-color: var(--border); }
 .link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; }
@@ -164,3 +177,10 @@ button, .file-btn {
   transition: .25s; max-width: calc(100% - 32px); z-index: 10;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.mic.disabled { opacity: .45; box-shadow: none; }
+.empty .secondary { margin-top: 12px; }
+.ask { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .4); display: grid; place-items: center; padding: 16px; }
+.ask-box { background: var(--surface); border-radius: var(--radius); padding: 20px; max-width: 360px; width: 100%; }
+.ask-box p { margin: 0 0 16px; }
+@media (prefers-reduced-motion: reduce) { .mic.recording, .timer-badge .dot { animation: none; } .toast { transition: none; } }

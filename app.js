@@ -25,6 +25,20 @@ const $ = (id) => document.getElementById(id);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 // ---------------- UI-hjälp ----------------
+// Egen bekräftelseruta (confirm() fungerar inte i alla inbäddade vyer).
+function ask(message, okLabel = 'OK') {
+  return new Promise((resolve) => {
+    const dlg = $('askDialog');
+    $('askText').textContent = message;
+    $('askOk').textContent = okLabel;
+    dlg.hidden = false;
+    $('askOk').focus();
+    const done = (v) => { dlg.hidden = true; $('askOk').onclick = $('askCancel').onclick = null; resolve(v); };
+    $('askOk').onclick = () => done(true);
+    $('askCancel').onclick = () => done(false);
+  });
+}
+
 let toastTimer;
 function toast(msg) {
   const t = $('toast');
@@ -61,7 +75,11 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
 
 // ---------------- taligenkänning ----------------
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SR) { $('srUnsupported').hidden = false; }
+function micUnavailable() {
+  $('srUnsupported').hidden = false;
+  $('micBtn').classList.add('disabled');
+}
+if (!SR) micUnavailable();
 
 /**
  * Startar en inspelning. onText(final, interim) anropas löpande.
@@ -84,7 +102,7 @@ function listen({ onText, onEnd }) {
     onText(finalText, interim);
   };
   rec.onerror = (e) => {
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Mikrofonen är blockerad – tillåt den i webbläsaren.');
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { micUnavailable(); toast('Mikrofonen är blockerad här – använd tangentbordets 🎤.'); }
     else if (e.error === 'no-speech') toast('Hörde inget – försök igen.');
     else if (e.error !== 'aborted') toast(`Taligenkänningsfel: ${e.error}`);
   };
@@ -94,7 +112,7 @@ function listen({ onText, onEnd }) {
     onEnd(finalText);
   };
   rec._keepAlive = true;
-  rec.start();
+  try { rec.start(); } catch { micUnavailable(); setTimeout(() => onEnd(''), 0); }
   return () => { stopped = true; rec._keepAlive = false; rec.stop(); };
 }
 
@@ -247,9 +265,9 @@ function editEntry(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function deleteEntry(id) {
+async function deleteEntry(id) {
   const e = state.entries.find((x) => x.id === id);
-  if (!e || !confirm(`Ta bort ${formatMinutes(e.minutes)} den ${e.date}?`)) return;
+  if (!e || !(await ask(`Ta bort ${formatMinutes(e.minutes)} den ${e.date}?`, 'Ta bort'))) return;
   state.entries = state.entries.filter((x) => x.id !== id);
   save();
   renderOverview();
@@ -367,11 +385,27 @@ function renderOverview() {
           ${e.description ? `<div class="desc">${esc(e.description)}</div>` : ''}
           <div class="actions"><button class="link" data-edit="${e.id}">Redigera</button><button class="link del" data-del="${e.id}">Ta bort</button></div>
         </article>`).join('')}
-    </div>`).join('') : `<div class="empty">${q ? 'Inga träffar.' : 'Inga poster ännu – tryck på mikrofonen och berätta vad du gjort.'}</div>`;
+    </div>`).join('') : `<div class="empty">${q ? 'Inga träffar.' : 'Inga poster ännu – tryck på mikrofonen och berätta vad du gjort.<br><button class="secondary" id="demoBtn">Lägg in exempelposter</button>'}</div>`;
+}
+const DEMO = [
+  'i måndags från 7 till 16 på projekt Villa Ek, lunch 30 minuter, rev gamla köksskåp och bar ut',
+  'i tisdags mellan 7 och halv fyra på Villa Ek med en halvtimmes lunch, monterade nya köksskåp',
+  'igår 7 till 12 på projekt Bergvik, målade fasaden på norrsidan',
+  'igår 13 till 16 på Villa Ek, satte bänkskiva och diskho',
+  'idag 2 timmar på projekt Kontoret, offert och materialbeställning',
+];
+function addDemo() {
+  for (const t of DEMO) {
+    const r = parseEntry(t, parseOpts());
+    if (r.project) addProject(r.project, false);
+    state.entries.push({ ...r, id: uid(), description: '[Exempel] ' + r.description, command: undefined, dateSpecified: undefined, createdAt: Date.now() });
+  }
+  save(); renderOverview(); toast('Exempelposter tillagda – ta bort dem när du vill');
 }
 $('entryList').addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b) return;
+  if (b.id === 'demoBtn') return addDemo();
   if (b.dataset.edit) editEntry(b.dataset.edit);
   if (b.dataset.del) deleteEntry(b.dataset.del);
 });
@@ -417,7 +451,14 @@ $('autoSave').addEventListener('change', (e) => { state.settings.autoSave = e.ta
 $('dailyGoal').addEventListener('change', (e) => { state.settings.dailyGoal = +e.target.value || 0; save(); });
 
 // ---------------- export / import ----------------
-function download(name, content, type) {
+async function download(name, content, type) {
+  if (window.claude?.use) {
+    const dl = await window.claude.use('downloads').catch(() => null);
+    if (dl) {
+      try { await dl.save({ filename: name, data: new Blob([content], { type }) }); } catch { toast('Nedladdningen avbröts'); }
+      return;
+    }
+  }
   const url = URL.createObjectURL(new Blob([content], { type }));
   const a = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.append(a); a.click(); a.remove();
@@ -439,7 +480,7 @@ $('importJson').addEventListener('change', async (e) => {
   try {
     const data = JSON.parse(await file.text());
     if (!Array.isArray(data.entries)) throw new Error('fel format');
-    if (!confirm(`Ersätta nuvarande data med ${data.entries.length} poster från filen?`)) return;
+    if (!(await ask(`Ersätta nuvarande data med ${data.entries.length} poster från filen?`, 'Ersätt'))) return;
     state = { ...defaults(), ...data, settings: { ...defaults().settings, ...data.settings } };
     save(); renderSettings(); renderTimer(); toast('Data återställd');
   } catch { toast('Kunde inte läsa filen'); }
