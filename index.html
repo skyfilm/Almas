@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Almas Tid</title>
+  <meta name="description" content="Tidrapportering och dokumentation med rösten.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Almas Tid</h1>
+    <div id="timerBadge" class="timer-badge" hidden>
+      <span class="dot"></span><span id="timerText">00:00</span>
+      <button id="timerStopBtn" class="link">Stoppa</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- RAPPORTERA -->
+    <section id="view-report" class="view active" aria-labelledby="tab-report">
+      <div class="mic-area">
+        <button id="micBtn" class="mic" aria-label="Tala in rapport">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+        </button>
+        <p id="micHint" class="hint">Tryck och säg t.ex. <em>”Igår 7 till 16 på Villa Ek, lunch 30 minuter, monterade kök”</em></p>
+        <p id="srUnsupported" class="warn" hidden>Din webbläsare saknar inbyggd taligenkänning. Skriv texten nedan, eller använd tangentbordets dikteringsknapp 🎤.</p>
+      </div>
+
+      <label class="field">
+        <span>Det du sa</span>
+        <textarea id="transcript" rows="3" placeholder="Transkriberad text visas här – du kan också skriva."></textarea>
+      </label>
+      <div class="row gap">
+        <button id="parseBtn" class="secondary">Tolka text</button>
+        <button id="clearBtn" class="ghost">Rensa</button>
+      </div>
+
+      <form id="entryForm" class="card" autocomplete="off">
+        <input type="hidden" id="f-id">
+        <div class="grid">
+          <label class="field"><span>Datum</span><input type="date" id="f-date" required></label>
+          <label class="field"><span>Projekt</span><input id="f-project" list="projectList" placeholder="Valfritt"></label>
+          <label class="field"><span>Start</span><input type="time" id="f-start"></label>
+          <label class="field"><span>Slut</span><input type="time" id="f-end"></label>
+          <label class="field"><span>Rast (min)</span><input type="number" id="f-break" min="0" step="5" value="0"></label>
+          <label class="field"><span>Tid (timmar)</span><input type="number" id="f-hours" min="0" step="0.25" required></label>
+        </div>
+        <label class="field">
+          <span class="row between">Dokumentation
+            <button type="button" id="dictateBtn" class="chip" aria-label="Diktera dokumentation">🎤 Diktera</button>
+          </span>
+          <textarea id="f-desc" rows="4" placeholder="Vad gjordes? Material, avvikelser, nästa steg…"></textarea>
+        </label>
+        <div class="row gap">
+          <button type="submit" class="primary" id="saveBtn">Spara</button>
+          <button type="button" id="cancelEditBtn" class="ghost" hidden>Avbryt redigering</button>
+        </div>
+      </form>
+
+      <details class="help">
+        <summary>Vad kan jag säga?</summary>
+        <ul>
+          <li><b>Tid:</b> ”8 timmar”, ”en och en halv timme”, ”45 minuter”, ”tre kvart”</li>
+          <li><b>Klockslag:</b> ”från 7 till 16”, ”mellan 8 och halv fem”, ”klockan 08:15 till 12:45”</li>
+          <li><b>Rast:</b> ”lunch 30 minuter”, ”med en halvtimmes lunch”</li>
+          <li><b>Datum:</b> ”idag”, ”igår”, ”i förrgår”, ”i måndags”, ”den 3 november”</li>
+          <li><b>Projekt:</b> ”på projekt Alfa” eller bara projektnamnet om det finns i listan</li>
+          <li><b>Timer:</b> ”starta timer på Alfa” … ”stoppa, slipade golv”</li>
+          <li>Allt annat blir dokumentation.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ÖVERSIKT -->
+    <section id="view-overview" class="view" aria-labelledby="tab-overview">
+      <div class="row between week-nav">
+        <button id="prevWeek" class="ghost" aria-label="Föregående vecka">‹</button>
+        <div class="center">
+          <strong id="weekLabel">Vecka</strong>
+          <div id="weekTotal" class="muted"></div>
+        </div>
+        <button id="nextWeek" class="ghost" aria-label="Nästa vecka">›</button>
+      </div>
+      <div id="weekBars" class="bars"></div>
+      <div id="projectTotals" class="card"></div>
+      <div class="row between">
+        <h2>Poster</h2>
+        <input id="search" type="search" placeholder="Sök…" class="search">
+      </div>
+      <div id="entryList"></div>
+    </section>
+
+    <!-- INSTÄLLNINGAR -->
+    <section id="view-settings" class="view" aria-labelledby="tab-settings">
+      <div class="card">
+        <h2>Projekt</h2>
+        <form id="projectForm" class="row gap">
+          <input id="newProject" placeholder="Nytt projekt" required>
+          <button class="secondary">Lägg till</button>
+        </form>
+        <ul id="projectChips" class="chips"></ul>
+        <label class="field"><span>Standardprojekt</span><select id="defaultProject"></select></label>
+      </div>
+      <div class="card">
+        <h2>Röst</h2>
+        <label class="field"><span>Språk för taligenkänning</span>
+          <select id="lang">
+            <option value="sv-SE">Svenska</option>
+            <option value="en-US">English</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="speak"> Läs upp bekräftelse</label>
+        <label class="check"><input type="checkbox" id="autoSave"> Spara direkt efter inspelning (om tid hittades)</label>
+        <label class="field"><span>Arbetstid per dag (timmar)</span><input type="number" id="dailyGoal" min="0" step="0.5"></label>
+      </div>
+      <div class="card">
+        <h2>Export &amp; säkerhetskopia</h2>
+        <div class="row gap wrap">
+          <button id="exportCsv" class="secondary">Exportera CSV</button>
+          <button id="exportJson" class="secondary">Säkerhetskopia (JSON)</button>
+          <label class="secondary file-btn">Återställ…<input type="file" id="importJson" accept="application/json" hidden></label>
+        </div>
+        <p class="muted">All data sparas lokalt i din webbläsare.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" role="tablist">
+    <button id="tab-report" class="tab active" data-view="report" role="tab">🎙️<span>Rapportera</span></button>
+    <button id="tab-overview" class="tab" data-view="overview" role="tab">📅<span>Översikt</span></button>
+    <button id="tab-settings" class="tab" data-view="settings" role="tab">⚙️<span>Inställningar</span></button>
+  </nav>
+
+  <datalist id="projectList"></datalist>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
